@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 4.0)
 project(fractal)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -11,10 +11,12 @@ if(NOT ISPC_EXECUTABLE)
 endif()
 
 set(ISPC_OBJ ${CMAKE_CURRENT_BINARY_DIR}/fractal_ispc.o)
+set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(ISPC_HDR ${INCLUDES}/fractal_ispc.h)
 
 add_custom_command(
         OUTPUT ${ISPC_OBJ}
-        COMMAND ${ISPC_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fractal.ispc -o ${ISPC_OBJ}
+        COMMAND ${ISPC_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fractal.ispc -o ${ISPC_OBJ} -h ${ISPC_HDR}
         # It's also good practice to use the full path in DEPENDS
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fractal.ispc
         COMMENT "Compiling fractal.ispc"

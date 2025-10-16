@@ -2,10 +2,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <cstdio>
-
-extern "C" {
-    void draw_image(int width, int height, unsigned int *buffer, int n, int max_iter, double a);
-}
+#include "include/fractal_ispc.h"
 
 void print_usage(const char* prog_name) {
     std::cout << "Usage: " << prog_name << " [OPTIONS]\n"
@@ -13,7 +10,7 @@ void print_usage(const char* prog_name) {
               << "  -d, --degree N        Polynomial degree\n"
               << "  -s, --size WxH        Image resolution (default: 1024x1024)\n"
               << "  -i, --max-iter N      Maximum iterations (default: 250)\n"
-              << "  -a, --step A          Step scaling (default: 1.0)\n"
+              << "  -a, --step RE,IM      Step scaling complex (default: 1.0,0.0)\n"
               << "  -o, --output FILE     Output PPM (default: newton_fractal.ppm)\n"
               << "  -h, --help            Show help\n";
 }
@@ -24,9 +21,15 @@ bool parse_size(const char* size_str, int& width, int& height) {
            && w > 0 && h > 0 && (width = w, height = h, true);
 }
 
+bool parse_complex(const char* size_str, ispc::Complex& a) {
+    int re, im;
+    return (sscanf(size_str, "%d,%d", &re, &im) == 2 || sscanf(size_str, "%d, %d", &re, &im) == 2)
+           && (a.re = re, a.im = im, true);
+}
+
 int main(int argc, char* argv[]) {
     int degree = 5, width = 1024, height = 1024, max_iter = 250;
-    double step = 1.0;
+    ispc::Complex step = {1.0, 0.0};
     std::string output_file = "newton_fractal.ppm";
 
     static struct option long_options[] = {
@@ -51,17 +54,19 @@ int main(int argc, char* argv[]) {
             case 'i':
                 if ((max_iter = std::atoi(optarg)) <= 0) { std::cerr << "Error: Max iter > 0\n"; return 1; }
                 break;
-            case 'a': step = std::atof(optarg); break;
+            case 'a':
+                if (!parse_complex(optarg, step)) { std::cerr << "Error: Invalid step complex number\n"; return 1; }
+                break;
             case 'o': output_file = optarg; break;
             case 'h': print_usage(argv[0]); return 0;
             default: print_usage(argv[0]); return 1;
         }
     }
 
-    auto* buffer = new unsigned int[width * height];
+    auto *buffer = new int32_t[width * height];
 
     std::cout << "Rendering Newton fractal (z^" << degree << " - 1 = 0)\n";
-    draw_image(width, height, buffer, degree, max_iter, step);
+    draw_image(width, height, buffer, degree, max_iter, &step);
 
     std::ofstream file(output_file, std::ios::binary);
     if (!file) { std::cerr << "Error: Cannot write file\n"; delete[] buffer; return 1; }

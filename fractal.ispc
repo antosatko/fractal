@@ -3,23 +3,24 @@ struct Complex {
     double im;
 };
 
-void calculate_roots(uniform int n, varying Complex roots[]) {
+void calculate_roots(uniform int n, uniform Complex uniform* roots) {
     uniform float pi2 = 6.283185307179586f;
     for (uniform int k = 0; k < n; ++k) {
-        double angle = pi2 * (double)k / (double)n;
-        roots[k].re = cos(angle);
-        roots[k].im = sin(angle);
+        uniform Complex root;
+        sincos(pi2 * (uniform double)k / (uniform double)n, &root.re, &root.im);
+        roots[k] = root;
     }
 }
 
-varying Complex complex_mul(varying Complex a, varying Complex b) {
-    varying Complex result;
-    result.re = a.re * b.re - a.im * b.im;
-    result.im = a.re * b.im + a.im * b.re;
+inline varying Complex complex_mul(varying Complex a, varying Complex b) {
+    varying Complex result = {
+        a.re * b.re - a.im * b.im,
+        a.re * b.im + a.im * b.re
+    };
     return result;
 }
 
-varying double complex_mag2(varying Complex z) {
+inline varying double complex_mag2(varying Complex z) {
     return z.re * z.re + z.im * z.im;
 }
 
@@ -57,20 +58,24 @@ varying Complex newton_step(varying Complex z, varying Complex w, varying Comple
 }
 
 export void draw_image(uniform int width, uniform int height,
-uniform int buffer[], uniform int n, uniform int max_iter, uniform double a) {
+uniform int buffer[], uniform int n, uniform int max_iter, Complex* uniform a) {
     uniform int color_mode = 0;
     uniform double SQ3 = 1.7320508075688772;
-    varying Complex a_complex = {a, 0.0};
-    Complex roots[100];
-    if (color_mode == 1)
+    varying Complex a_complex = {a->re, a->im};
+    uniform double xscale = 10.0 / (double)width;
+    uniform double yscale = 10.0 / (double)height;
+    uniform Complex uniform* roots = new Complex[n];
+
+    if (color_mode == 1) {
         calculate_roots(n, roots);
+    }
 
     for (uniform int y = 0; y < height; y++) {
         foreach (x = 0 ... width) {
             varying int idx = x + y * width;
             varying Complex z;
-            z.re = ((double)x * 10.0 / (double)width) - 5.0;
-            z.im = -(((double)y * 10.0 / (double)height) - 5.0);
+            z.re = (double)x * xscale - 5.0;
+            z.im = -((double)y * yscale - 5.0);
             varying Complex w = poly(z, n);
             varying double f = 1.0;
             varying int iter = 0;
@@ -85,8 +90,10 @@ uniform int buffer[], uniform int n, uniform int max_iter, uniform double a) {
 
             double min = 1000000.0;
             int min_ri = 0;
-            for(uniform int ri = 0; ri < n; ri++){
-                Complex temp = {roots[ri].re - z.re, roots[ri].im - z.im};
+            for (uniform int ri = 0; ri < n; ri++) {
+                double rr = roots[ri].re;
+                double ri_im = roots[ri].im;
+                Complex temp = {rr - z.re, ri_im - z.im};
                 double d = complex_mag2(temp);
                 if (d < min) {
                     min = d;
@@ -127,4 +134,7 @@ uniform int buffer[], uniform int n, uniform int max_iter, uniform double a) {
             buffer[idx] = (A << 24) | (R << 16) | (G << 8) | B;
         }
     }
+
+    delete[] roots;
+    roots = NULL;
 }
