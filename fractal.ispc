@@ -10,7 +10,6 @@ export struct DrawParams {
     uniform int height;
     uniform int n;
     uniform int max_iter;
-    uniform int threads;
 };
 
 inline varying Complex complex_mul(varying Complex a, varying Complex b) {
@@ -27,8 +26,9 @@ inline varying double complex_mag2(varying Complex z) {
 
 varying Complex poly(varying Complex z, uniform int n) {
     varying Complex power = {1.0, 0.0};
+
     for (uniform int i = 0; i < n; i++) {
-    power = complex_mul(power, z);
+        power = complex_mul(power, z);
     }
     power.re -= 1.0;
     return power;
@@ -36,6 +36,7 @@ varying Complex poly(varying Complex z, uniform int n) {
 
 varying Complex dpoly(varying Complex z, uniform int n) {
     varying Complex power = {1.0, 0.0};
+
     for (uniform int i = 1; i < n; i++) {
         power = complex_mul(power, z);
     }
@@ -48,6 +49,7 @@ varying Complex newton_step(varying Complex z, varying Complex w, varying Comple
     if (denom < 1e-12) {
         return z;
     }
+
     varying Complex step;
     step.re = (w.re * dw.re + w.im * dw.im) / denom;
     step.im = (w.im * dw.re - w.re * dw.im) / denom;
@@ -57,6 +59,7 @@ varying Complex newton_step(varying Complex z, varying Complex w, varying Comple
     result.im = z.im - step.im;
     return result;
 }
+
 void draw_task(uniform DrawParams uniform &params)
 {
     uniform int color_mode = 0;

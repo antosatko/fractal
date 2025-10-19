@@ -12,7 +12,6 @@ void print_usage(const char* prog_name) {
               << "  -i, --max-iter N      Maximum iterations (default: 250)\n"
               << "  -a, --step RE,IM      Step scaling complex (default: 1.0,0.0)\n"
               << "  -o, --output FILE     Output PPM (default: newton_fractal.ppm)\n"
-              << "  -j, --threads N       Maximum threads allowed (default: 1)\n"
               << "  -h, --help            Show help\n";
 }
 
@@ -36,7 +35,6 @@ int main(const int argc, char* argv[]) {
         .height = 1024,
         .n = 5,
         .max_iter = 250,
-        .threads = 1,
     };
     std::string output_file = "newton_fractal.ppm";
 
