@@ -3,15 +3,15 @@ struct Complex {
     double im;
 };
 
-void calculate_roots(uniform double n, uniform Complex uniform *roots) {
-    uniform float pi2 = 6.283185307179586f;
-    uniform int un = n;
-    for (uniform int k = 0; k < un; k++) {
-        uniform Complex root;
-        sincos(pi2 * (uniform double)k / n, &root.re, &root.im);
-        roots[k] = root;
-    }
-}
+export struct DrawParams {
+    uniform int width;
+    uniform int height;
+    uniform int *uniform buffer;
+    uniform int n;
+    uniform int max_iter;
+    uniform Complex a;
+    uniform int threads;
+};
 
 inline varying Complex complex_mul(varying Complex a, varying Complex b) {
     varying Complex result = {
@@ -58,64 +58,43 @@ varying Complex newton_step(varying Complex z, varying Complex w, varying Comple
     return result;
 }
 
-export void draw_image(uniform int width, uniform int height,
-                       uniform int buffer[], uniform int n, uniform int max_iter, Complex uniform &a) {
+void draw_task(uniform DrawParams uniform &params)
+{
     uniform int color_mode = 0;
     uniform double SQ3 = 1.7320508075688772;
-    uniform Complex a_ = a;
-    uniform double xscale = 10.0 / (double)width;
-    uniform double yscale = 10.0 / (double)height;
-    uniform Complex uniform* roots = new Complex[n];
+    uniform double xscale = 10.0 / (uniform double)params.width;
+    uniform double yscale = 10.0 / (uniform double)params.height;
+    uniform int max_iter_f2 = params.max_iter / 2;
 
-    if (color_mode == 1) {
-        calculate_roots((uniform double)n, roots);
-    }
-
-    for (uniform int y = 0; y < height; y++) {
-        foreach (x = 0 ... width) {
-            varying int idx = x + y * width;
+    for (uniform int y = 0; y < params.height; y++) {
+        foreach (x = 0 ... params.width) {
+            varying int idx = x + y * params.width;
             varying Complex z;
             z.re = (double)x * xscale - 5.0;
             z.im = -((double)y * yscale - 5.0);
-            varying Complex w = poly(z, n);
+            varying Complex w = poly(z, params.n);
             varying double f = 1.0;
             varying int iter = 0;
 
-            while (f > 0.01 && complex_mag2(w) > 0.01 && iter < max_iter / 2) {
-                varying Complex dw = dpoly(z, n);
-                z = newton_step(z, w, dw, a_);
-                w = poly(z, n);
+            while (f > 0.01 && complex_mag2(w) > 0.01 && iter < max_iter_f2) {
+                varying Complex dw = dpoly(z, params.n);
+                z = newton_step(z, w, dw, params.a);
+                w = poly(z, params.n);
                 f *= 0.95;
                 iter++;
             }
 
-            double min = 1000000.0;
-            int min_ri = 0;
-            for (uniform int ri = 0; ri < n; ri++) {
-                Complex root = roots[ri];
-                Complex temp = {root.re - z.re, root.im - z.im};
-                double d = complex_mag2(temp);
-                if (d < min) {
-                    min = d;
-                    min_ri = ri;
-                }
-            }
-            if (color_mode == 0) {
-                varying Complex z_sq = complex_mul(z, z);
-                varying double mag2 = complex_mag2(z);
-                if (mag2 > 1e-12) {
-                    varying double scale = f * mag2;
-                    z_sq.re *= scale / mag2;
-                    z_sq.im *= scale / mag2;
-                } else {
-                    z_sq.re = 0.0;
-                    z_sq.im = 0.0;
-                }
-                z = z_sq;
+            varying Complex z_sq = complex_mul(z, z);
+            varying double mag2 = complex_mag2(z);
+            if (mag2 > 1e-12) {
+                varying double scale = f * mag2;
+                z_sq.re *= scale / mag2;
+                z_sq.im *= scale / mag2;
             } else {
-                z = roots[min_ri];
-                f = 0.6;
+                z_sq.re = 0.0;
+                z_sq.im = 0.0;
             }
+            z = z_sq;
 
             varying double r = 0.5 * f + 0.24 * z.re - (SQ3 * 0.24) * z.im;
             varying double g = 0.5 * f + 0.24 * z.re + (SQ3 * 0.24) * z.im;
@@ -131,10 +110,12 @@ export void draw_image(uniform int width, uniform int height,
             varying int B = (int)(255.0 * b);
             varying int A = 255;
 
-            buffer[idx] = (A << 24) | (R << 16) | (G << 8) | B;
+            params.buffer[idx] = (A << 24) | (R << 16) | (G << 8) | B;
         }
     }
+}
 
-    delete[] roots;
-    roots = NULL;
+export void draw_image(uniform DrawParams uniform &params) {
+    // launch[1] draw_task(params);
+    draw_task(params);
 }
