@@ -1,3 +1,4 @@
 build/*
 !build/*.ppm
 .idea
+include/fractal_ispc.h
