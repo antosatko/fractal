@@ -2,3 +2,4 @@ build/*
 !build/*.ppm
 .idea
 include/fractal_ispc.h
+newton_fractal.ppm
