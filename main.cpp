@@ -1,12 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
-//#include <getopt.h>
-#ifdef _WIN32
-#include <intrin.h>
-#else
-#include <x86intrin.h>
-#endif
+#include <getopt.h>
 #include "include/fractal_ispc.h"
 
 void print_usage(const char* prog_name) {
@@ -34,11 +29,18 @@ bool parse_complex(const char* size_str, ispc::Complex& a) {
 }
 
 int main(const int argc, char* argv[]) {
-    int degree = 5, width = 1024, height = 1024, max_iter = 250;
-    ispc::Complex step = {1.0, 0.0};
+    ispc::DrawParams params = {
+        .a = {1.0, 0.0},
+        .buffer = nullptr,
+        .width = 1024,
+        .height = 1024,
+        .n = 5,
+        .max_iter = 250,
+        .threads = 1,
+    };
     std::string output_file = "newton_fractal.ppm";
 
-    /*static struct option long_options[] = {
+    static struct option long_options[] = {
         {"degree",    required_argument, nullptr, 'd'},
         {"size",      required_argument, nullptr, 's'},
         {"max-iter",  required_argument, nullptr, 'i'},
@@ -46,59 +48,41 @@ int main(const int argc, char* argv[]) {
         {"output",    required_argument, nullptr, 'o'},
         {"help",      no_argument,       nullptr, 'h'},
         {nullptr, 0, nullptr, 0}
-    };*/
+    };
 
-    /*int opt;
+    int opt;
     while ((opt = getopt_long(argc, argv, "d:s:i:a:o:h", long_options, nullptr)) != -1) {
         switch (opt) {
             case 'd':
-                if ((degree = std::atoi(optarg)) <= 0) { std::cerr << "Error: Degree > 0\n"; return 1; }
+                if ((params.n = std::atoi(optarg)) <= 0) { std::cerr << "Error: Degree > 0\n"; return 1; }
                 break;
             case 's':
-                if (!parse_size(optarg, width, height)) { std::cerr << "Error: Invalid size\n"; return 1; }
+                if (!parse_size(optarg, params.width, params.height)) { std::cerr << "Error: Invalid size\n"; return 1; }
                 break;
             case 'i':
-                if ((max_iter = std::atoi(optarg)) <= 0) { std::cerr << "Error: Max iter > 0\n"; return 1; }
+                if ((params.max_iter = std::atoi(optarg)) <= 0) { std::cerr << "Error: Max iter > 0\n"; return 1; }
                 break;
             case 'a':
-                if (!parse_complex(optarg, step)) { std::cerr << "Error: Invalid step complex number\n"; return 1; }
+                if (!parse_complex(optarg, params.a)) { std::cerr << "Error: Invalid step complex number\n"; return 1; }
                 break;
             case 'o': output_file = optarg; break;
             case 'h': print_usage(argv[0]); return 0;
             default: print_usage(argv[0]); return 1;
         }
-    }*/
+    }
 
-    auto *buffer = new int32_t[width * height];
+    params.buffer = new int32_t[params.width * params.height];
 
-    std::cout << "Rendering Newton fractal (z^" << degree << " - 1 = 0)\n";
-    auto time_start = __rdtsc();
-    // single thread
-    // draw_image(width, height, buffer, degree, max_iter, step);
-    //
+    std::cout << "Rendering Newton fractal (z^" << params.n << " - 1 = 0)\n";
 
-    // multithread
-    ispc::DrawParams params = {
-        .width = width,
-        .height = height,
-        .buffer = buffer,
-        .n = degree,
-        .max_iter = max_iter,
-        .a = step,
-        .threads = 1,
-    };
     ispc::draw_image(params);
-    //
-
-    auto time_end = __rdtsc();
-    std::cout << "time: " << time_end - time_start << "\n";
 
     std::ofstream file(output_file, std::ios::binary);
-    if (!file) { std::cerr << "Error: Cannot write file\n"; delete[] buffer; return 1; }
+    if (!file) { std::cerr << "Error: Cannot write file\n"; delete[] params.buffer; return 1; }
 
-    file << "P6\n" << width << " " << height << "\n255\n";
-    for (int i = 0; i < width * height; ++i) {
-        unsigned int val = buffer[i];
+    file << "P6\n" << params.width << " " << params.height << "\n255\n";
+    for (int i = 0; i < params.width * params.height; ++i) {
+        unsigned int val = params.buffer[i];
         unsigned char r = (val >> 16) & 0xFF;
         unsigned char g = (val >> 8) & 0xFF;
         unsigned char b = val & 0xFF;
@@ -108,7 +92,7 @@ int main(const int argc, char* argv[]) {
     }
 
     file.close();
-    delete[] buffer;
+    delete[] params.buffer;
     std::cout << "Saved " << output_file << std::endl;
     return 0;
 }

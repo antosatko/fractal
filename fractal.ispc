@@ -4,12 +4,12 @@ struct Complex {
 };
 
 export struct DrawParams {
+    uniform Complex a;
+    uniform int *uniform buffer;
     uniform int width;
     uniform int height;
-    uniform int *uniform buffer;
     uniform int n;
     uniform int max_iter;
-    uniform Complex a;
     uniform int threads;
 };
 
@@ -57,7 +57,6 @@ varying Complex newton_step(varying Complex z, varying Complex w, varying Comple
     result.im = z.im - step.im;
     return result;
 }
-
 void draw_task(uniform DrawParams uniform &params)
 {
     uniform int color_mode = 0;
@@ -114,8 +113,6 @@ void draw_task(uniform DrawParams uniform &params)
         }
     }
 }
-
 export void draw_image(uniform DrawParams uniform &params) {
-    // launch[1] draw_task(params);
     draw_task(params);
 }
