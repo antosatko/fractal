@@ -3,11 +3,12 @@ struct Complex {
     double im;
 };
 
-void calculate_roots(uniform int n, uniform Complex uniform* roots) {
+void calculate_roots(uniform double n, uniform Complex uniform *roots) {
     uniform float pi2 = 6.283185307179586f;
-    for (uniform int k = 0; k < n; ++k) {
+    uniform int un = n;
+    for (uniform int k = 0; k < un; k++) {
         uniform Complex root;
-        sincos(pi2 * (uniform double)k / (uniform double)n, &root.re, &root.im);
+        sincos(pi2 * (uniform double)k / n, &root.re, &root.im);
         roots[k] = root;
     }
 }
@@ -58,16 +59,16 @@ varying Complex newton_step(varying Complex z, varying Complex w, varying Comple
 }
 
 export void draw_image(uniform int width, uniform int height,
-uniform int buffer[], uniform int n, uniform int max_iter, Complex* uniform a) {
+                       uniform int buffer[], uniform int n, uniform int max_iter, Complex uniform &a) {
     uniform int color_mode = 0;
     uniform double SQ3 = 1.7320508075688772;
-    varying Complex a_complex = {a->re, a->im};
+    uniform Complex a_ = a;
     uniform double xscale = 10.0 / (double)width;
     uniform double yscale = 10.0 / (double)height;
     uniform Complex uniform* roots = new Complex[n];
 
     if (color_mode == 1) {
-        calculate_roots(n, roots);
+        calculate_roots((uniform double)n, roots);
     }
 
     for (uniform int y = 0; y < height; y++) {
@@ -82,7 +83,7 @@ uniform int buffer[], uniform int n, uniform int max_iter, Complex* uniform a) {
 
             while (f > 0.01 && complex_mag2(w) > 0.01 && iter < max_iter / 2) {
                 varying Complex dw = dpoly(z, n);
-                z = newton_step(z, w, dw, a_complex);
+                z = newton_step(z, w, dw, a_);
                 w = poly(z, n);
                 f *= 0.95;
                 iter++;
@@ -91,9 +92,8 @@ uniform int buffer[], uniform int n, uniform int max_iter, Complex* uniform a) {
             double min = 1000000.0;
             int min_ri = 0;
             for (uniform int ri = 0; ri < n; ri++) {
-                double rr = roots[ri].re;
-                double ri_im = roots[ri].im;
-                Complex temp = {rr - z.re, ri_im - z.im};
+                Complex root = roots[ri];
+                Complex temp = {root.re - z.re, root.im - z.im};
                 double d = complex_mag2(temp);
                 if (d < min) {
                     min = d;

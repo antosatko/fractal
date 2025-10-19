@@ -54,6 +54,19 @@ struct Complex {
 };
 #endif
 
+#ifndef __ISPC_STRUCT_DrawParams__
+#define __ISPC_STRUCT_DrawParams__
+struct DrawParams {
+    int32_t width;
+    int32_t height;
+    int32_t * buffer;
+    int32_t n;
+    int32_t max_iter;
+    struct Complex a;
+    int32_t threads;
+};
+#endif
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Functions exported from ispc code
@@ -61,7 +74,11 @@ struct Complex {
 #if defined(__cplusplus) && (! defined(__ISPC_NO_EXTERN_C) || !__ISPC_NO_EXTERN_C )
 extern "C" {
 #endif // __cplusplus
-    extern void draw_image(int32_t width, int32_t height, int32_t * buffer, int32_t n, int32_t max_iter, struct Complex * a);
+#if defined(__cplusplus)
+    extern void draw_image(struct DrawParams &params);
+#else
+    extern void draw_image(struct DrawParams *params);
+#endif // draw_image function declaraion
 #if defined(__cplusplus) && (! defined(__ISPC_NO_EXTERN_C) || !__ISPC_NO_EXTERN_C )
 } /* end extern C */
 #endif // __cplusplus

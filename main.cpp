@@ -1,7 +1,12 @@
 #include <iostream>
 #include <fstream>
-#include <getopt.h>
 #include <cstdio>
+//#include <getopt.h>
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 #include "include/fractal_ispc.h"
 
 void print_usage(const char* prog_name) {
@@ -12,6 +17,7 @@ void print_usage(const char* prog_name) {
               << "  -i, --max-iter N      Maximum iterations (default: 250)\n"
               << "  -a, --step RE,IM      Step scaling complex (default: 1.0,0.0)\n"
               << "  -o, --output FILE     Output PPM (default: newton_fractal.ppm)\n"
+              << "  -j, --threads N       Maximum threads allowed (default: 1)\n"
               << "  -h, --help            Show help\n";
 }
 
@@ -27,12 +33,12 @@ bool parse_complex(const char* size_str, ispc::Complex& a) {
            && (a.re = re, a.im = im, true);
 }
 
-int main(int argc, char* argv[]) {
+int main(const int argc, char* argv[]) {
     int degree = 5, width = 1024, height = 1024, max_iter = 250;
     ispc::Complex step = {1.0, 0.0};
     std::string output_file = "newton_fractal.ppm";
 
-    static struct option long_options[] = {
+    /*static struct option long_options[] = {
         {"degree",    required_argument, nullptr, 'd'},
         {"size",      required_argument, nullptr, 's'},
         {"max-iter",  required_argument, nullptr, 'i'},
@@ -40,9 +46,9 @@ int main(int argc, char* argv[]) {
         {"output",    required_argument, nullptr, 'o'},
         {"help",      no_argument,       nullptr, 'h'},
         {nullptr, 0, nullptr, 0}
-    };
+    };*/
 
-    int opt;
+    /*int opt;
     while ((opt = getopt_long(argc, argv, "d:s:i:a:o:h", long_options, nullptr)) != -1) {
         switch (opt) {
             case 'd':
@@ -61,12 +67,31 @@ int main(int argc, char* argv[]) {
             case 'h': print_usage(argv[0]); return 0;
             default: print_usage(argv[0]); return 1;
         }
-    }
+    }*/
 
     auto *buffer = new int32_t[width * height];
 
     std::cout << "Rendering Newton fractal (z^" << degree << " - 1 = 0)\n";
-    draw_image(width, height, buffer, degree, max_iter, &step);
+    auto time_start = __rdtsc();
+    // single thread
+    // draw_image(width, height, buffer, degree, max_iter, step);
+    //
+
+    // multithread
+    ispc::DrawParams params = {
+        .width = width,
+        .height = height,
+        .buffer = buffer,
+        .n = degree,
+        .max_iter = max_iter,
+        .a = step,
+        .threads = 1,
+    };
+    ispc::draw_image(params);
+    //
+
+    auto time_end = __rdtsc();
+    std::cout << "time: " << time_end - time_start << "\n";
 
     std::ofstream file(output_file, std::ios::binary);
     if (!file) { std::cerr << "Error: Cannot write file\n"; delete[] buffer; return 1; }
